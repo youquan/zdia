@@ -1,5 +1,5 @@
-#ifndef _AVP_H_
-#define _AVP_H_
+#ifndef _MSG_H_
+#define _MSG_H_
 
 #include <stdint.h>
 #include <stdlib.h>

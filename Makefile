@@ -16,6 +16,7 @@ LDFLAGS :=
 SRC 	:= test.c \
            server.c \
 	       conn.c \
+	       array.c \
 	       list.c \
 	       fifo.c \
 	       receiver.c \
@@ -23,11 +24,12 @@ SRC 	:= test.c \
 	       tcp.c \
 	       common.c \
 	       msg.c \
+	       dict.c \
            # don't delete this line
 
 OBJ 	:= $(SRC:%.c=%.o)
  
-LIB		:= -lpthread
+LIB		:= -lpthread -lexpat
 
 %.o: %.c
 	$(CC) $(CFLAGS) $(DIR_INC) -c $< -o $(DIR_BIN)/$@

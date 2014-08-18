@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <string.h>
 
+#include "dict.h"
 #include "server.h"
 
 int main() {
@@ -19,6 +20,8 @@ int main() {
     s->conn = NULL;
 
     server_start(s);
+
+    dict_add_dict(NULL, "dictionary.xml");
 
     sleep(100);
 

@@ -1,6 +1,8 @@
 #ifndef _AVP_H_
 #define _AVP_H_
 
+#include <stdint.h>
+
 /* Base AVP types */
 typedef enum {
     AVP_TYPE_OCTET_STRING,
@@ -55,6 +57,6 @@ typedef struct {
     avp_value_u     value;
 } avp_t;
 
-extern size_t avp_get_header_size(uint8_t flags);
+size_t avp_get_header_size(uint8_t flags);
 
 #endif

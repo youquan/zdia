@@ -8,6 +8,7 @@
 
 /* memory */
 typedef void *(*md_alloc_func)(size_t);
+typedef void *(*md_realloc_func)(void *ptr, size_t);
 typedef void  (*md_free_func)(void *);
 
 void  md_set_alloc(md_alloc_func f);
