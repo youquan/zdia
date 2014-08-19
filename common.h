@@ -15,6 +15,7 @@ void  md_set_alloc(md_alloc_func f);
 void  md_set_free(md_free_func f);
 
 void *md_malloc(size_t n);
+void *md_realloc(void *ptr, size_t n);
 void  md_free(void *ptr);
 
 /* check return value */

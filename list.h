@@ -6,11 +6,6 @@ typedef struct dlist {
     struct dlist *  prev;
 } list_t;
 
-
-typedef struct {
-} array_t;
-
-
 typedef list_t queue_t;
 
 list_t *list_new();

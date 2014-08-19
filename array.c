@@ -158,6 +158,7 @@ int     array_swap(array_t arr1, array_t arr2) {
 
 int     array_clear(array_t arr) {
     arr->size = 0;
+    return 0;
 }
 
 array_t array_clone(const array_t arr) {

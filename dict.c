@@ -10,10 +10,11 @@
 #define BUFFSIZE 8192
 
 typedef struct {
-    unsigned    depth;
     dict_t *    dict;
+    unsigned    depth;
 } xml_parse_info_t;
 
+#if 0
 static void xml_dia_command() {
 }
 
@@ -28,53 +29,40 @@ static void xml_dia_vendor() {
 
 static void xml_dia_type() {
 }
+#endif
 
 static void xml_elem_start(void *user_data, const XML_Char *name, const XML_Char **attrs) {
     int i;
     xml_parse_info_t *parse_info = (xml_parse_info_t *)user_data;
-    parse_info.depth++;
+    parse_info->depth++;
 
     if (0 == strcmp(name, "base")) {
-        //dict_cmd_t *dict_cmd = parse_info->dict->cmd_dict;
-        dict_cmd_t cmd;
-
-        for (i = 0; attrs[i]; i += 2) {
-            if (0 == strcmp(attrs[i], "name")) {
-                cmd.name = attrs[i + 1];
-            } else if (0 == strcmp(attrs[i], "code")) {
-                cmd.code = atoi(attrs[i + 1]);
-            } else if (0 == strcmp(attrs[i], "vendor")) {
-                cmd.vendor-id = atoi(attrs[i + 1]);
-            } else {
-                LOG_WARN("unsupported attribute %s with value %s.", attrs[i], attrs[i + 1]);
-            }
-        }
-
-        dict_add_cmd(parse_info->dict, &cmd);
-    } else if (0 == strcmp(name, "application")) {
         dict_app_t app;
+        dict_app_init(&app);
 
-        for (i = 0; attrs[i]; i += 2) {
-            if (0 == strcmp(attrs[i], "id")) {
-                app.id = atoi(attrs[i + 1]);
-            } else if (0 == strcmp(attrs[i], "name")) {
-                app.name = attrs[i + 1];
-            } else if (0 == strcmp(attrs[i], "uri")) {
-                app.uri = attrs[i + 1];
-            } else {
-                LOG_WARN("unsupported attribute %s with value %s.", attrs[i], attrs[i + 1]);
-            }
-        }
-
-        dict_add_app(parse_info->dict, &app);
-    } else if (0 == strcmp(name, "command")) {
-        dict_app_t app;
         app.id = 0;
         app.name = "base";
 
         for (i = 0; attrs[i]; i += 2) {
             if (0 == strcmp(attrs[i], "uri")) {
-                app.uri = attrs[i + 1];
+                app.uri = strdup(attrs[i + 1]);
+            } else {
+                LOG_WARN("unsupported attribute %s with value %s, ignored.", attrs[i], attrs[i + 1]);
+            }
+        }
+
+        dict_add_app(parse_info->dict, &app);
+    } else if (0 == strcmp(name, "application")) {
+        dict_app_t app;
+        dict_app_init(&app);
+
+        for (i = 0; attrs[i]; i += 2) {
+            if (0 == strcmp(attrs[i], "id")) {
+                app.id = atoi(attrs[i + 1]);
+            } else if (0 == strcmp(attrs[i], "name")) {
+                app.name = strdup(attrs[i + 1]);
+            } else if (0 == strcmp(attrs[i], "uri")) {
+                app.uri = strdup(attrs[i + 1]);
             } else {
                 LOG_WARN("unsupported attribute %s with value %s.", attrs[i], attrs[i + 1]);
             }
@@ -82,25 +70,111 @@ static void xml_elem_start(void *user_data, const XML_Char *name, const XML_Char
 
         dict_add_app(parse_info->dict, &app);
     } else if (0 == strcmp(name, "vendor")) {
-    } else if (0 == strcmp(name, "typedefn")) {
+        dict_vendor_t vendor;
+
+        for (i = 0; attrs[i]; i += 2) {
+            if (0 == strcmp(attrs[i], "vendor-id")) {
+                vendor.id = strdup(attrs[i + 1]);
+            } else if (0 == strcmp(attrs[i], "code")) {
+                vendor.code = atoi(attrs[i + 1]);
+            } else if (0 == strcmp(attrs[i], "name")) {
+                vendor.name = strdup(attrs[i + 1]);
+            } else {
+                LOG_WARN("unsupported attribute %s with value %s.", attrs[i], attrs[i + 1]);
+            }
+        }
+
+        dict_add_vendor(parse_info->dict, &vendor);
+    } else if (0 == strcmp(name, "command")) {
+        dict_cmd_t cmd;
+
+        for (i = 0; attrs[i]; i += 2) {
+            if (0 == strcmp(attrs[i], "name")) {
+                cmd.name = strdup(attrs[i + 1]);
+            } else if (0 == strcmp(attrs[i], "code")) {
+                cmd.code = atoi(attrs[i + 1]);
+            } else if (0 == strcmp(attrs[i], "vendor-id")) {
+                cmd.vendor_id = strdup(attrs[i + 1]);
+            } else {
+                LOG_WARN("unsupported attribute %s with value %s.", attrs[i], attrs[i + 1]);
+            }
+        }
+
+        dict_app_t *app = (dict_app_t *)array_back(parse_info->dict->apps);
+        dict_app_add_cmd(app, &cmd);
     } else if (0 == strcmp(name, "avp")) {
+        dict_avp_t avp;
+
+        for (i = 0; attrs[i]; i += 2) {
+            if (0 == strcmp(attrs[i], "name")) {
+                avp.name = strdup(attrs[i + 1]);
+            } else if (0 == strcmp(attrs[i], "code")) {
+                avp.code = atoi(attrs[i + 1]);
+            } else if (0 == strcmp(attrs[i], "mandatory")) {
+            } else if (0 == strcmp(attrs[i], "may-encrypt")) {
+                if (0 == strcmp(attrs[i + 1], "yes")) {
+                    avp.may_encrypt = 1;
+                } else if (0 == strcmp(attrs[i + 1], "no")) {
+                    avp.may_encrypt = 0;
+                } else {
+                    LOG_WARN("unexpected value for attribute %s.", attrs[i]);
+                }
+            } else if (0 == strcmp(attrs[i], "protected")) {
+            } else if (0 == strcmp(attrs[i], "vendor-bit")) {
+            } else if (0 == strcmp(attrs[i], "description")) {
+                avp.desc = strdup(attrs[i + 1]);
+            } else {
+                LOG_WARN("unsupported attribute %s with value %s.", attrs[i], attrs[i + 1]);
+            }
+        }
+
+        dict_app_t *app = (dict_app_t *)array_back(parse_info->dict->apps);
+        dict_app_add_avp(app, &avp);
+    } else if (0 == strcmp(name, "type")) {
+        dict_avp_t *avp;
+
+        for (i = 0; attrs[i]; i += 2) {
+            if (0 == strcmp(attrs[i], "type-name")) {
+                avp.name = strdup(attrs[i + 1]);
+            } else {
+                LOG_WARN("unsupported attribute %s with value %s.", attrs[i], attrs[i + 1]);
+            }
+        }
+    } else if (0 == strcmp(name, "enum")) {
+        dict_avp_t *avp;
+
+        for (i = 0; attrs[i]; i += 2) {
+            if (0 == strcmp(attrs[i], "name")) {
+                cmd.name = strdup(attrs[i + 1]);
+            } else if (0 == strcmp(attrs[i], "code")) {
+                cmd.name = atoi(attrs[i + 1]);
+            } else {
+                LOG_WARN("unsupported attribute %s with value %s.", attrs[i], attrs[i + 1]);
+            }
+        }
+    } else if (0 == strcmp(name, "typedefn")) {
+        dict_type_t type;
+
+        for (i = 0; attrs[i]; i += 2) {
+            if (0 == strcmp(attrs[i], "type-name")) {
+                type.type_name = strdup(attrs[i + 1]);
+            } else if (0 == strcmp(attrs[i], "type-parent")) {
+                type.type_parent = strdup(attrs[i + 1]);
+            } else if (0 == strcmp(attrs[i], "description")) {
+                type.desc = strdup(attrs[i + 1]);
+            } else {
+                LOG_WARN("unsupported attribute %s with value %s.", attrs[i], attrs[i + 1]);
+            }
+        }
+
+        dict_app_t *app = (dict_app_t *)array_back(parse_info->dict->apps);
+        dict_app_add_type(app, &type);
     }
-
-    for (i = 0; i < depth; i++)
-        printf(" ");
-
-    printf("%s", name);
-
-    for (i = 0; attrs[i]; i += 2) {
-        printf(" %s='%s'", attrs[i], attrs[i + 1]);
-    }
-
-    printf("\n");
 }
 
 static void xml_elem_end(void *user_data, const XML_Char *name) {
     xml_parse_info_t *parse_info = (xml_parse_info_t *)user_data;
-    parse_info.depth--;
+    parse_info->depth--;
 }
 
 static void xml_text(void *user_data, const XML_Char *text, int len) {
@@ -111,15 +185,28 @@ dict_t *dict_new() {
     dict_t *dict = (dict_t *)md_malloc(sizeof(dict_t));
     if (dict == NULL) return NULL;
 
+    dict->apps = array_new(sizeof(dict_app_t));
+    dict->vendors = array_new(sizeof(dict_vendor_t));
+
+    if (dict->apps == NULL || dict->vendors == NULL) {
+        dict_free(dict);
+        return NULL;
+    }
+
     return dict;
 }
 
 void dict_free(dict_t *dict) {
+    if (dict) {
+        array_free(dict->apps);
+        array_free(dict->vendors);
+    }
+
     md_free(dict);
 }
 
 int dict_add_dict(dict_t *dict, const char *file) {
-    xml_parse_info_t parse_info = {0};
+    xml_parse_info_t parse_info = {dict, 0};
 
     XML_Parser p = XML_ParserCreate(NULL);
     if (!p) {
@@ -168,15 +255,65 @@ int dict_add_dict(dict_t *dict, const char *file) {
     return 0;
 }
 
-int dict_add_app(dict_t *dict, const dict_avp_t *app) {
+int dict_add_app(dict_t *dict, const dict_app_t *app) {
+    return array_push_back(dict->apps, app);
 }
 
-int dict_add_vendor(dict_t *dict, const dict_avp_t *vendor) {
+int dict_add_vendor(dict_t *dict, const dict_vendor_t *vendor) {
+    return array_push_back(dict->vendors, vendor);
 }
 
-int dict_add_avp(dict_t *dict, const dict_avp_t *avp) {
+
+dict_app_t *dict_app_new() {
+    dict_app_t *app = (dict_app_t *)md_malloc(sizeof(dict_app_t));
+    if (app == NULL) return NULL;
+
+    app->cmds = array_new(sizeof(dict_cmd_t));
+    app->avps = array_new(sizeof(dict_avp_t));
+    app->types = array_new(sizeof(dict_type_t));
+
+    if (app->cmds == NULL || app->avps == NULL || app->types == NULL) {
+        dict_app_free(app);
+        return NULL;
+    }
+
+    app->id   = 0;
+    app->name = NULL;
+    app->uri  = NULL;
+
+    return app;
 }
 
-int dict_add_cmd(dict_t *dict, const dict_cmd_t *cmd) {
+void dict_app_free(dict_app_t *app) {
+    if (app) {
+        array_free(app->cmds);
+        array_free(app->avps);
+        array_free(app->types);
+
+        md_free(app);
+    }
 }
+
+void dict_app_init(dict_app_t *app) {
+    app->id   = 0;
+    app->name = NULL;
+    app->uri  = NULL;
+
+    app->cmds = array_new(sizeof(dict_cmd_t));
+    app->avps = array_new(sizeof(dict_avp_t));
+    app->types = array_new(sizeof(dict_type_t));
+}
+
+int dict_app_add_avp(dict_app_t *app, const dict_avp_t *avp) {
+    return array_push_back(app->avps, avp);
+}
+
+int dict_app_add_cmd(dict_app_t *app, const dict_cmd_t *cmd) {
+    return array_push_back(app->cmds, cmd);
+}
+
+int dict_app_add_type(dict_app_t *app, const dict_type_t *t) {
+    return array_push_back(app->types, t);
+}
+
 
