@@ -24,32 +24,62 @@ int main() {
     dict_t *dict = dict_new();
     dict_add_dict(dict, "dictionary.xml");
 
-    array_iter_t it;
+    array_iter_t it, it2;
+
+    fprintf(stdout, "application\n");
     for (it = array_begin(dict->apps); it != array_end(dict->apps); it = array_next(dict->apps, it)) {
         dict_app_t *app = (dict_app_t *)it;
-        fprintf(stdout, "app id: %d, name: %s, uri: %s\n", app->id, app->name, app->uri);
-
-        array_iter_t it2;
-        for (it2 = array_begin(app->cmds); it2 != array_end(app->cmds); it2 = array_next(app->cmds, it2)) {
-            dict_cmd_t *cmd = (dict_cmd_t *)it2;
-            fprintf(stdout, "command vendor-id: %s, name: %s, code: %u\n", cmd->vendor_id, cmd->name, cmd->code);
-        }
-
-        for (it2 = array_begin(app->avps); it2 != array_end(app->avps); it2 = array_next(app->avps, it2)) {
-            dict_avp_t *avp = (dict_avp_t *)it2;
-            fprintf(stdout, "avp name: %s, code: %u\n", avp->name, avp->code);
-        }
-
-        for (it2 = array_begin(app->types); it2 != array_end(app->types); it2 = array_next(app->types, it2)) {
-            dict_type_t *type = (dict_type_t *)it2;
-            fprintf(stdout, "type name: %s, parent: %s\n", type->type_name, type->type_parent);
-        }
-
+        fprintf(stdout, "    app id: %d, name: %s, uri: %s\n", app->id, app->name, app->uri);
     }
 
+    fprintf(stdout, "\nvendor\n");
     for (it = array_begin(dict->vendors); it != array_end(dict->vendors); it = array_next(dict->vendors, it)) {
         dict_vendor_t *vendor = (dict_vendor_t *)it;
-        fprintf(stdout, "vendor id: %s, code: %d, name: %s\n", vendor->id, vendor->code, vendor->name);
+        fprintf(stdout, "    vendor id: %d, name: %s\n", vendor->id, vendor->name);
+    }
+
+    fprintf(stdout, "\ncommand\n");
+    for (it = array_begin(dict->cmds); it != array_end(dict->cmds); it = array_next(dict->cmds, it)) {
+        dict_cmd_t *cmd = (dict_cmd_t *)it;
+        fprintf(stdout, "    command proxible: %d, name: %s, code: %u\n", cmd->proxiable, cmd->name, cmd->code);
+
+        fprintf(stdout, "        request avps \n");
+        for (it2 = array_begin(cmd->req_rules); it2 != array_end(cmd->req_rules); it2 = array_next(cmd->req_rules, it2)) {
+            dict_avp_rule_t *rule = (dict_avp_rule_t *)it2;
+            fprintf(stdout, "            name: %s, min: %d, max: %d\n", rule->avp_name, rule->min, rule->max);
+        }
+
+        fprintf(stdout, "        answer avps\n");
+        for (it2 = array_begin(cmd->ans_rules); it2 != array_end(cmd->ans_rules); it2 = array_next(cmd->ans_rules, it2)) {
+            dict_avp_rule_t *rule = (dict_avp_rule_t *)it2;
+            fprintf(stdout, "            name: %s, min: %d, max: %d\n", rule->avp_name, rule->min, rule->max);
+        }
+    }
+
+    fprintf(stdout, "\navp\n");
+    for (it = array_begin(dict->avps); it != array_end(dict->avps); it = array_next(dict->avps, it)) {
+        dict_avp_t *avp = (dict_avp_t *)it;
+        fprintf(stdout, "    avp name: %s, code: %u, type: %s\n", avp->name, avp->code, avp->type_name);
+
+        if (0 == strcmp("grouped", avp->type_name)) {
+            fprintf(stdout, "        sub avps\n");
+            for (it2 = array_begin(avp->content.rules); it2 != array_end(avp->content.rules); it2 = array_next(avp->content.rules, it2)) {
+                dict_avp_rule_t *rule = (dict_avp_rule_t *)it2;
+                fprintf(stdout, "            name: %s, min: %d, max: %d\n", rule->avp_name, rule->min, rule->max);
+            }
+        } else if (avp->content.enums) {
+            fprintf(stdout, "        enums\n");
+            for (it2 = array_begin(avp->content.enums); it2 != array_end(avp->content.enums); it2 = array_next(avp->content.enums, it2)) {
+                dict_enum_t *e = (dict_enum_t *)it2;
+                fprintf(stdout, "            name: %s, code: %d\n", e->name, e->code);
+            }
+        }
+    }
+
+    fprintf(stdout, "\ntype\n");
+    for (it = array_begin(dict->types); it != array_end(dict->types); it = array_next(dict->types, it)) {
+        dict_avp_type_t *type = (dict_avp_type_t *)it;
+        fprintf(stdout, "    type name: %s, parent: %s\n", type->name, type->parent_name);
     }
 
     sleep(100);
