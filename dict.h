@@ -1,14 +1,13 @@
 #ifndef _DICT_H_
 #define _DICT_H_
 
-#include "avp.h"
-#include "msg.h"
+#include <stdint.h>
 #include "array.h"
 
-//typedef uint32_t        cmd_code_t;
-//typedef uint32_t        avp_code_t;
-//typedef uint32_t        vendor_id_t;
-//typedef uint32_t        app_id_t;
+typedef uint32_t        cmd_code_t;
+typedef uint32_t        avp_code_t;
+typedef uint32_t        vendor_id_t;
+typedef uint32_t        app_id_t;
 
 /* cmd: index = vendor-id >> 32 + code
  * avp: index = app-id >> 32 + code
@@ -17,7 +16,14 @@ typedef uint64_t        dict_index_t;
 
 enum dict_avp_base_type {
     ABT_GROUPED,
-    ABT_OCTETSTRING
+    ABT_OCTETSTRING,
+    ABT_INTEGER32,
+    ABT_INTEGER64,
+    ABT_UNSIGNED32,
+    ABT_UNSIGNED64,
+    ABT_FLOAT32,
+    ABT_FLOAT64,
+    ABT_UNKNOWN
 };
 
 enum dict_avp_position {
@@ -45,28 +51,27 @@ enum dict_requirement_level {
 };
 
 typedef struct {
-    vendor_id_t         id;
-    const char *        name;
+    vendor_id_t             id;
+    const char *            name;
 } dict_vendor_t;
 
-typedef struct {
-    const char *        name;
-    const char *        parent_name;
-    const char *        desc;
+typedef struct dict_avp_type {
+    const char *            name;
+    const char *            parent_name;
+    const char *            desc;
 
-    uint32_t            parent;
-    int                 codec;
+    struct dict_avp_type *  parent;
+    enum dict_avp_base_type base;
 } dict_avp_type_t;
 
 typedef struct {
-    app_id_t            id;
-    const char *        name;
-    const char *        uri;
+    app_id_t                id;
+    const char *            name;
+    const char *            uri;
 } dict_app_t;
 
 typedef struct {
-    /* dict_avp_t object index in dict */
-    dict_index_t            avp;
+    struct dict_avp *       avp;
     const char *            avp_name;
 
     /* rules, available for both command and grouped avp  */
@@ -91,7 +96,7 @@ typedef struct dict_avp {
     enum dict_requirement_level protected;
 
     const char *                type_name;
-    dict_avp_type_t             type;
+    dict_avp_type_t *           type;
 
     /* enum values or sub-avps with rule */
     union {
@@ -159,8 +164,8 @@ int dict_app_add_type(dict_app_t *app, const dict_avp_type_t *t);
 int dict_avp_add_avp(dict_avp_t *avp, const dict_avp_t *sub, const dict_avp_rule_t *r);
 int dict_cmd_add_avp(dict_cmd_t *cmd, const dict_avp_t *sub, const dict_avp_rule_t *r);
 
-const dict_cmd_t *dict_get_cmd(const dict_t *dict, uint32_t code);
-const dict_avp_t *dict_get_avp(const dict_t *dict, uint32_t code);
+const dict_cmd_t *dict_get_cmd(const dict_t *dict, cmd_code_t code, app_id_t app);
+const dict_avp_t *dict_get_avp(const dict_t *dict, avp_code_t code, vendor_id_t vendor_id);
 
 const char *dict_dump(const dict_t *dict);
 

@@ -4,9 +4,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "list.h"
-
-typedef uint32_t cmd_code_t;
-typedef uint32_t app_id_t;
+#include "dict.h"
 
 enum {
     CMD_FLAG_REQUEST,
@@ -36,18 +34,22 @@ enum {
 };
 
 typedef struct {
-    msg_header_t    header;
-    int             parsed;
-    list_t          avps;
-    uint8_t *       raw_data;
+    msg_header_t        header;
+    int                 parsed;
+    list_t              avps;
+
+    /* always 4 octets aligned */
+    const uint32_t *    raw_data;
 } msg_t;
 
 msg_t *msg_new(size_t n);
-msg_t *msg_new_from(uint8_t *buf);
+msg_t *msg_new_from(uint32_t *buf);
 void   msg_free(msg_t *msg);
 
 int    msg_parse_header(msg_t *msg);
-int    msg_parse_all(msg_t *msg);
+int    msg_parse_all(msg_t *msg, const dict_t *dict);
 
+//int    msg_add_avp(msg_t *msg, const avp_t *avp);
+//int    msg_add_avp_raw(msg_t *msg, avp_code_t code, const char *val);
 
 #endif

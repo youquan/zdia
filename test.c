@@ -19,10 +19,10 @@ int main() {
     s->protocol = IPPROTO_TCP;
     s->conn = NULL;
 
-    server_start(s);
-
     dict_t *dict = dict_new();
     dict_add_dict(dict, "dictionary.xml");
+
+    server_start(s, dict);
 
     array_iter_t it, it2;
 
@@ -46,13 +46,13 @@ int main() {
         fprintf(stdout, "        request avps \n");
         for (it2 = array_begin(cmd->req_rules); it2 != array_end(cmd->req_rules); it2 = array_next(cmd->req_rules, it2)) {
             dict_avp_rule_t *rule = (dict_avp_rule_t *)it2;
-            fprintf(stdout, "            name: %s, min: %d, max: %d\n", rule->avp_name, rule->min, rule->max);
+            fprintf(stdout, "            name: %s, min: %d, max: %d, code: %d, vendor-id: %d\n", rule->avp_name, rule->min, rule->max, rule->avp->code, rule->avp->vendor_id);
         }
 
         fprintf(stdout, "        answer avps\n");
         for (it2 = array_begin(cmd->ans_rules); it2 != array_end(cmd->ans_rules); it2 = array_next(cmd->ans_rules, it2)) {
             dict_avp_rule_t *rule = (dict_avp_rule_t *)it2;
-            fprintf(stdout, "            name: %s, min: %d, max: %d\n", rule->avp_name, rule->min, rule->max);
+            fprintf(stdout, "            name: %s, min: %d, max: %d, code: %d, vendor-id: %d\n", rule->avp_name, rule->min, rule->max, rule->avp->code, rule->avp->vendor_id);
         }
     }
 
@@ -79,7 +79,7 @@ int main() {
     fprintf(stdout, "\ntype\n");
     for (it = array_begin(dict->types); it != array_end(dict->types); it = array_next(dict->types, it)) {
         dict_avp_type_t *type = (dict_avp_type_t *)it;
-        fprintf(stdout, "    type name: %s, parent: %s\n", type->name, type->parent_name);
+        fprintf(stdout, "    type name: %s, parent: %s, codec: %d\n", type->name, type->parent_name, type->base);
     }
 
     sleep(100);

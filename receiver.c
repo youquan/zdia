@@ -37,7 +37,7 @@ receiver_t *receiver_new(conn_t *conn, size_t nworker) {
 
     int i;
     for (i = 0; i < receiver->nworker; i++) {
-        receiver->workers[i] = worker_new();
+        //receiver->workers[i] = worker_new();
     }
 
     int ret = pthread_create(&receiver->thread, NULL, receiver_thread, receiver);
@@ -110,7 +110,7 @@ static void *receiver_thread(void *args) {
             // handle ret
             received += ret;
         };
-        memcpy(msg->raw_data, header, sizeof(header));
+        memcpy((void *)msg->raw_data, header, sizeof(header));
 
         msg_parse_header(msg);
         //msg_parse_all(msg);

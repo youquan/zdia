@@ -116,6 +116,7 @@ static void xml_elem_start(void *user_data, const XML_Char *name, const XML_Char
         parse_info->curr_rules = &parse_info->curr_avp->content.rules;
     } else if (0 == strcmp(name, "avprule")) {
         dict_avp_rule_t rule;
+        memset(&rule, 0, sizeof(rule));
 
         for (i = 0; attrs[i]; i += 2) {
             if (0 == strcmp(attrs[i], "name")) {
@@ -143,7 +144,8 @@ static void xml_elem_start(void *user_data, const XML_Char *name, const XML_Char
         array_push_back(*parse_info->curr_rules, &rule);
     } else if (0 == strcmp(name, "avp")) {
         dict_avp_t avp;
-        avp.content.enums = NULL;
+        memset(&avp, 0, sizeof(avp));
+        avp.app = parse_info->curr_app;
 
         for (i = 0; attrs[i]; i += 2) {
             if (0 == strcmp(attrs[i], "name")) {
@@ -215,6 +217,8 @@ static void xml_elem_start(void *user_data, const XML_Char *name, const XML_Char
         array_push_back(*enums, &e);
     } else if (0 == strcmp(name, "typedefn")) {
         dict_avp_type_t type;
+        memset(&type, 0, sizeof(type));
+        type.base = ABT_UNKNOWN;
 
         for (i = 0; attrs[i]; i += 2) {
             if (0 == strcmp(attrs[i], "type-name")) {
@@ -241,6 +245,114 @@ static void xml_text(void *user_data, const XML_Char *text, int len) {
 }
 /*********************** xml parse functions end **************************/
 
+static int cmp_app(const void *a, const void *b) {
+    return ((const dict_app_t *)a)->id - ((const dict_app_t *)b)->id;
+}
+
+static int cmp_vendor(const void *a, const void *b) {
+    return ((const dict_vendor_t *)a)->id - ((const dict_vendor_t *)b)->id;
+}
+
+static int cmp_cmd(const void *a, const void *b) {
+    return ((const dict_cmd_t *)a)->code - ((const dict_cmd_t *)b)->code;
+}
+
+static int cmp_avp(const void *a, const void *b) {
+    return ((const dict_avp_t *)a)->code - ((const dict_avp_t *)b)->code;
+}
+
+static int cmp_type(const void *a, const void *b) {
+    return strcmp(((const dict_avp_type_t *)a)->name, ((const dict_avp_type_t *)b)->name);
+}
+
+static void dict_build_base_types(dict_t *dict) {
+    static dict_avp_type_t types[] = {
+        /* name,        parent_name,   description,         parent,    base */
+        {"OctetString", NULL,          "Octet String",      NULL,      0},
+        {"Unsigned32",  NULL,          "Unsigned32",        NULL,      1},
+        {"Unsigned64",  NULL,          "Unsigned64",        NULL,      2}
+    };
+
+    int i;
+    for (i = 0; i < sizeof(types)/sizeof(dict_avp_type_t); i++) {
+        array_push_back(dict->types, &types[i]);
+    }
+}
+
+static void dict_build_rules(array_t rules, array_t avps) {
+    array_iter_t it;
+
+    for (it = array_begin(rules); it != array_end(rules); it = array_next(rules, it)) {
+        array_iter_t it_avp;
+        dict_avp_rule_t *rule = (dict_avp_rule_t *)it;
+
+        if (rule->avp != NULL) continue;
+
+        for (it_avp = array_begin(avps); it_avp != array_end(avps); it_avp = array_next(avps, it_avp)) {
+            if (0 == strcmp(rule->avp_name, ((dict_avp_t *)it_avp)->name)) {
+                rule->avp = it_avp;
+                break;
+            }
+        }
+    }
+}
+
+static void dict_build(dict_t *dict) {
+    array_iter_t it;
+
+    array_sort(dict->apps);
+
+    array_sort(dict->vendors);
+
+    array_sort(dict->cmds);
+    for (it = array_begin(dict->cmds); it != array_end(dict->cmds); it = array_next(dict->cmds, it)) {
+        dict_cmd_t *cmd = (dict_cmd_t *)it;
+
+        dict_build_rules(cmd->req_rules, dict->avps);
+        dict_build_rules(cmd->ans_rules, dict->avps);
+    }
+
+    array_sort(dict->avps);
+    for (it = array_begin(dict->avps); it != array_end(dict->avps); it = array_next(dict->avps, it)) {
+        dict_avp_t *avp = it;
+
+        if (0 == strcmp(avp->type_name, "grouped")) {
+            dict_build_rules(avp->content.rules, dict->avps);
+        }
+    }
+
+    /* create type chain at first */
+    array_sort(dict->types);
+    for (it = array_begin(dict->types); it != array_end(dict->types); it = array_next(dict->types, it)) {
+        dict_avp_type_t *type = (dict_avp_type_t *)it;
+        if (type->parent_name != NULL) {
+            array_iter_t it2;
+            for (it2 = array_begin(dict->types); it2 != array_end(dict->types); it2 = array_next(dict->types, it2)) {
+                if (0 == strcmp(((dict_avp_type_t *)it2)->name, type->parent_name)) {
+                    type->parent = (dict_avp_type_t *)it2;
+                    break;
+                }
+            }
+        }
+    }
+
+    /* set base for types */
+    for (it = array_begin(dict->types); it != array_end(dict->types); it = array_next(dict->types, it)) {
+        dict_avp_type_t *type = (dict_avp_type_t *)it;
+        dict_avp_type_t *curr = type;
+
+        while (curr && curr->base == ABT_UNKNOWN) {
+            curr = curr->parent;
+        };
+
+        if (curr) {
+            type->base = curr->base;
+        } else {
+            LOG_ERROR("no base type for type %s.", type->name);
+        }
+    }
+}
+
 dict_t *dict_new() {
     dict_t *dict = (dict_t *)md_malloc(sizeof(dict_t));
     if (dict == NULL) return NULL;
@@ -259,6 +371,14 @@ dict_t *dict_new() {
         dict_free(dict);
         return NULL;
     }
+
+    array_set_cmp(dict->apps,    cmp_app);
+    array_set_cmp(dict->vendors, cmp_vendor);
+    array_set_cmp(dict->cmds,    cmp_cmd);
+    array_set_cmp(dict->avps,    cmp_avp);
+    array_set_cmp(dict->types,   cmp_type);
+
+    dict_build_base_types(dict);
 
     return dict;
 }
@@ -327,6 +447,8 @@ int dict_add_dict(dict_t *dict, const char *file) {
     fclose(fp);
     XML_ParserFree(p);
 
+    dict_build(dict);
+
     return 0;
 }
 
@@ -355,6 +477,12 @@ dict_avp_t * dict_add_avp(dict_t *dict, const dict_avp_t *avp) {
 }
 
 dict_avp_type_t * dict_add_avp_type(dict_t *dict, const dict_avp_type_t *type) {
+    dict_avp_type_t *ret = array_find(dict->types, type);
+    if (ret != array_end(dict->types)) {
+        LOG_WARN("existing type %s.", type->name);
+        return ret;
+    }
+
     if (array_push_back(dict->types, type) == 0) {
         return array_back(dict->types);
     } else {
@@ -389,4 +517,19 @@ void dict_app_init(dict_app_t *app) {
     app->uri  = NULL;
 }
 
+const dict_cmd_t *dict_get_cmd(const dict_t *dict, cmd_code_t code, app_id_t app) {
+    return NULL;
+}
+
+const dict_avp_t *dict_get_avp(const dict_t *dict, avp_code_t code, vendor_id_t vendor_id) {
+    array_iter_t it;
+    for (it = array_begin(dict->avps); it != array_end(dict->avps); it = array_next(dict->avps, it)) {
+        dict_avp_t *da = (dict_avp_t *)it;
+        if (da->code == code && da->vendor_id == vendor_id) {
+            return da;
+        }
+    }
+
+    return NULL;
+}
 

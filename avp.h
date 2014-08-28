@@ -2,19 +2,7 @@
 #define _AVP_H_
 
 #include <stdint.h>
-
-/* Base AVP types */
-typedef enum {
-    AVP_TYPE_OCTET_STRING,
-    AVP_TYPE_INTEGER32,
-    AVP_TYPE_INTEGER64,
-    AVP_TYPE_UNSIGNED32,
-    AVP_TYPE_UNSIGNED64,
-    AVP_TYPE_FLOAT32,
-    AVP_TYPE_FLOAT64,
-    AVP_TYPE_GROUPED
-} avp_type_e;
-
+#include "dict.h"
 
 /* AVP flags */
 enum {
@@ -22,10 +10,6 @@ enum {
     AVP_FLAG_VENDOR     = 0x40,
     AVP_FLAG_ENCRYPTED  = 0x20
 };
-
-
-typedef uint32_t avp_code_t;
-typedef uint32_t vendor_id_t;
 
 
 typedef struct {
@@ -37,6 +21,7 @@ typedef struct {
 
 #define AVP_HEADER_SIZE_NO_VENDOR   8
 #define AVP_HEADER_SIZE_WITH_VENDOR 12
+#define AVP_IS_FLAG_SET(avp, flag) (((avp)->flags & (flag)) == (flag))
 
 typedef union {
     struct {
@@ -49,13 +34,29 @@ typedef union {
     uint64_t        u64;
     float           f32;
     double          f64;
-} avp_value_u;
+} avp_value_t;
 
 
 typedef struct {
-    avp_header_t    header;
-    avp_value_u     value;
+    avp_code_t          code;
+    uint8_t             flags;
+    uint32_t            len;
+    vendor_id_t         vendor_id;
+
+    avp_value_t         value;
+    array_t             avps;
+
+    /* always 8 octets aligned */
+    const uint32_t *    raw_data;
 } avp_t;
+
+/* avp is always 4 octets aligned */
+avp_t *avp_new();
+avp_t *avp_new_from(const uint32_t *buf);
+void   avp_free(avp_t *avp);
+
+int    avp_encode(avp_t *avp, const dict_t *dict);
+int    avp_decode(avp_t *avp, const dict_t *dict);
 
 size_t avp_get_header_size(uint8_t flags);
 

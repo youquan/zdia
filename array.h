@@ -3,16 +3,17 @@
 
 #include <stddef.h>
 
-typedef int (*array_cmp_func)(const void *elem1, const void *elem2);
-
 typedef struct __array *array_t;
 typedef void *array_iter_t;
 
 array_t array_new(size_t elem_size);
 void    array_free(array_t arr);
 
-int     array_size(const array_t arr);
-int     array_capacity(const array_t arr);
+void    array_set_cmp(array_t arr, int (*cmp)(const void *, const void *));
+void    array_sort(array_t arr);
+
+size_t  array_size(const array_t arr);
+size_t  array_capacity(const array_t arr);
 int     array_empty(const array_t arr);
 int     array_reserve(array_t arr, size_t n);
 int     array_resize(array_t arr, size_t n);
@@ -23,6 +24,7 @@ array_iter_t    array_back(const array_t arr);
 array_iter_t    array_begin(const array_t arr);
 array_iter_t    array_end(const array_t arr);
 array_iter_t    array_next(const array_t arr, array_iter_t iter);
+array_iter_t    array_find(array_t arr, const void *key);
 
 int     array_push_back(array_t arr, const void *elem);
 int     array_pop_back(array_t arr);

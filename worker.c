@@ -4,6 +4,7 @@
 #include "common.h"
 #include "worker.h"
 #include "list.h"
+#include "event.h"
 
 int msg_handler_default(const msg_t *msg) {
     return 0;
@@ -17,6 +18,8 @@ static msg_handler_func msg_handler = msg_handler_default;
 static ind_handler_func ind_handler = ind_handler_default;
 
 static int worker_msg_proc(msg_t *msg) {
+    msg_parse_all(msg, dict);
+
     switch (msg->header.cmd_code) {
         case 257:
         LOG_DEBUG("CE message received");
@@ -37,14 +40,12 @@ static int worker_ind_proc(ind_t *ind) {
 
 static void *worker_thread(void *args) {
     worker_t *worker = (worker_t *)args;
-    fifo_t   *fifo = worker->fifo;
+    fifo_t    fifo = worker->fifo;
 
     while (worker->status) {
         // 1.get from queue
         event_t ev;
-        fifo_pop(fifo, &ev);
-
-        if (ev.data.msg == NULL) {
+        if (0 != fifo_pop(fifo, &ev)) {
             usleep(1000000);
             continue;
         }
@@ -72,7 +73,7 @@ worker_t *worker_new() {
     worker_t *worker = (worker_t *)md_malloc(sizeof(worker_t));
     if (worker == NULL) return NULL;
 
-    worker->fifo = fifo_new(1024);
+    worker->fifo = fifo_new(sizeof(event_t), 1024);
     if (worker->fifo == NULL) {
         md_free(worker);
         return NULL;
@@ -81,7 +82,7 @@ worker_t *worker_new() {
     worker->id = 0;
     worker->status = 0;
 
-    if (worker_start(worker) !=0 ) {
+    if (worker_start(worker) != 0 ) {
         md_free(worker);
     }
 

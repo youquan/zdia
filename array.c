@@ -7,12 +7,12 @@ struct __array {
 
     size_t          size;       /* current element number  */
 
-    array_cmp_func  cmp;        /* compare function for sorting */
+    int             (*cmp)(const void *, const void *); /* compare function for sorting */
 
     void *          data;       /* data */
 };
 
-static const size_t s_array_initial_size = 16;
+static const size_t s_array_initial_size = 4;
 
 static int __array_grow(array_t arr) {
     static size_t array_grow_factor = 2;
@@ -51,11 +51,19 @@ void    array_free(array_t arr) {
     }
 }
 
-int     array_size(const array_t arr) {
+void    array_set_cmp(array_t arr, int (*cmp)(const void *, const void *)) {
+    arr->cmp = cmp;
+}
+
+void    array_sort(array_t arr) {
+    qsort(arr->data, arr->size, arr->elem_size, arr->cmp);
+}
+
+size_t  array_size(const array_t arr) {
     return arr->size;
 }
 
-int     array_capacity(const array_t arr) {
+size_t  array_capacity(const array_t arr) {
     return arr->capacity;
 }
 
@@ -95,6 +103,18 @@ array_iter_t    array_end(const array_t arr) {
 
 array_iter_t    array_next(const array_t arr, array_iter_t iter) {
     return (char *)iter + arr->elem_size;
+}
+
+array_iter_t    array_find(array_t arr, const void *elem) {
+    array_iter_t it;
+
+    for (it = array_begin(arr); it != array_end(arr); it = array_next(arr, it)) {
+        if (0 == arr->cmp(elem, it)) {
+            break;
+        }
+    }
+
+    return it;
 }
 
 int     array_push_back(array_t arr, const void *elem) {

@@ -23,6 +23,7 @@ SRC 	:= test.c \
 	       worker.c \
 	       tcp.c \
 	       common.c \
+	       avp.c \
 	       msg.c \
 	       dict.c \
            # don't delete this line

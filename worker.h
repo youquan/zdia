@@ -12,7 +12,7 @@ typedef struct {
     pthread_t   thread;
     int         status;
 
-    fifo_t *    fifo;
+    fifo_t      fifo;
 } worker_t;
 
 typedef int (*msg_handler_func)(const msg_t *msg);
