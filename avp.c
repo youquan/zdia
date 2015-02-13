@@ -3,7 +3,7 @@
 #include "common.h"
 
 avp_t *avp_new() {
-    avp_t *avp = (avp_t *)md_malloc(sizeof(avp_t));
+    avp_t *avp = (avp_t *)zd_malloc(sizeof(avp_t));
     if (avp == NULL) return NULL;
 
     memset(avp, 0, sizeof(avp_t));
@@ -12,7 +12,7 @@ avp_t *avp_new() {
 }
 
 avp_t *avp_new_from(const uint32_t *buf) {
-    avp_t *avp = (avp_t *)md_malloc(sizeof(avp_t));
+    avp_t *avp = (avp_t *)zd_malloc(sizeof(avp_t));
     if (avp == NULL) return NULL;
 
     memset(avp, 0, sizeof(avp_t));
@@ -43,7 +43,8 @@ int avp_decode(avp_t *avp, const dict_t *dict) {
     }
 
     /* value */
-    const dict_avp_t *da = dict_get_avp(dict, avp->code, avp->vendor_id);
+    //const dict_avp_t *da = dict_get_avp(dict, avp->code, avp->vendor_id);
+    const dict_avp_t *da = NULL;
     if (da == NULL) {
         LOG_WARN("cannot decode avp [code: %u; vendor-id: %u], please add information in dictinory.", avp->code, avp->vendor_id);
         pos = (avp->len + 3) / 4;

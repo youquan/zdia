@@ -6,7 +6,7 @@
 #include "common.h"
 
 conn_t *conn_new() {
-    conn_t *conn = (conn_t *)md_malloc(sizeof(conn_t));
+    conn_t *conn = (conn_t *)zd_malloc(sizeof(conn_t));
     return conn;
 }
 
@@ -16,23 +16,18 @@ void conn_free(conn_t *conn) {
         close(conn->sock);
     }
 
-    md_free(conn);
+    zd_free(conn);
 }
 
-conn_t *conn_serv_bind(int protocol, uint16_t port, list_t *ep) {
-    conn_t *conn;
-    
-    if ((conn = conn_new()) == NULL) {
-        LOG_ERROR("fail to create conn_t object.");
-        return NULL;
-    }
+conn_t *conn_serv_bind(int protocol, uint16_t port, array_t *ep) {
+    conn_t *conn = conn_new();
 
     conn->protocol = protocol;
     if (protocol == IPPROTO_TCP) {
-        if (list_empty(ep)) {
+        if (ep->size == 0) {
             return NULL;    /* or bind to INADDR_ANY */
         } else {
-            endpoint_t *host = (endpoint_t *)ep->next;
+            endpoint_t *host = (endpoint_t *)array_at(ep, 0);
             conn->family = host->addr.ss_family;
 
             socklen_t len = SALEN(&host->addr);
@@ -79,7 +74,7 @@ conn_t *conn_serv_accept(conn_t *conn) {
     return cli_conn;
 }
 
-conn_t *conn_cli_connect(int protocol, uint16_t port, list_t *ep) {
+conn_t *conn_cli_connect(int protocol, uint16_t port, array_t *ep) {
     return NULL;
 }
 

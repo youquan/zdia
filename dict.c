@@ -13,7 +13,7 @@ typedef struct {
     dict_t *        dict;
     array_t         path;
     dict_app_t *    curr_app;
-    dict_cmd_t *    curr_cmd;
+    dict_czd_t *    curr_cmd;
     dict_avp_t *    curr_avp;
     array_t *       curr_rules;
 } xml_parse_info_t;
@@ -88,7 +88,7 @@ static void xml_elem_start(void *user_data, const XML_Char *name, const XML_Char
 
         dict_add_vendor(parse_info->dict, &vendor);
     } else if (0 == strcmp(name, "command")) {
-        dict_cmd_t cmd;
+        dict_czd_t cmd;
         cmd.proxiable = 1;
         cmd.req_rules = array_new(sizeof(dict_avp_rule_t));
         cmd.ans_rules = array_new(sizeof(dict_avp_rule_t));
@@ -141,7 +141,7 @@ static void xml_elem_start(void *user_data, const XML_Char *name, const XML_Char
             }
         }
 
-        array_push_back(*parse_info->curr_rules, &rule);
+        array_push_back(parse_info->curr_rules, &rule);
     } else if (0 == strcmp(name, "avp")) {
         dict_avp_t avp;
         memset(&avp, 0, sizeof(avp));
@@ -254,7 +254,7 @@ static int cmp_vendor(const void *a, const void *b) {
 }
 
 static int cmp_cmd(const void *a, const void *b) {
-    return ((const dict_cmd_t *)a)->code - ((const dict_cmd_t *)b)->code;
+    return ((const dict_czd_t *)a)->code - ((const dict_czd_t *)b)->code;
 }
 
 static int cmp_avp(const void *a, const void *b) {
@@ -306,7 +306,7 @@ static void dict_build(dict_t *dict) {
 
     array_sort(dict->cmds);
     for (it = array_begin(dict->cmds); it != array_end(dict->cmds); it = array_next(dict->cmds, it)) {
-        dict_cmd_t *cmd = (dict_cmd_t *)it;
+        dict_czd_t *cmd = (dict_czd_t *)it;
 
         dict_build_rules(cmd->req_rules, dict->avps);
         dict_build_rules(cmd->ans_rules, dict->avps);
@@ -354,12 +354,12 @@ static void dict_build(dict_t *dict) {
 }
 
 dict_t *dict_new() {
-    dict_t *dict = (dict_t *)md_malloc(sizeof(dict_t));
+    dict_t *dict = (dict_t *)zd_malloc(sizeof(dict_t));
     if (dict == NULL) return NULL;
 
     dict->apps    = array_new(sizeof(dict_app_t));
     dict->vendors = array_new(sizeof(dict_vendor_t));
-    dict->cmds    = array_new(sizeof(dict_cmd_t));
+    dict->cmds    = array_new(sizeof(dict_czd_t));
     dict->avps    = array_new(sizeof(dict_avp_t));
     dict->types   = array_new(sizeof(dict_avp_type_t));
 
@@ -392,7 +392,7 @@ void dict_free(dict_t *dict) {
         array_free(dict->types);
     }
 
-    md_free(dict);
+    zd_free(dict);
 }
 
 int dict_add_dict(dict_t *dict, const char *file) {
@@ -460,7 +460,7 @@ dict_app_t * dict_add_app(dict_t *dict, const dict_app_t *app) {
     }
 }
 
-dict_cmd_t * dict_add_cmd(dict_t *dict, const dict_cmd_t *cmd) {
+dict_czd_t * dict_add_cmd(dict_t *dict, const dict_czd_t *cmd) {
     if (array_push_back(dict->cmds, cmd) == 0) {
         return array_back(dict->cmds);
     } else {
@@ -495,7 +495,7 @@ int dict_add_vendor(dict_t *dict, const dict_vendor_t *vendor) {
 }
 
 dict_app_t *dict_app_new() {
-    dict_app_t *app = (dict_app_t *)md_malloc(sizeof(dict_app_t));
+    dict_app_t *app = (dict_app_t *)zd_malloc(sizeof(dict_app_t));
     if (app == NULL) return NULL;
 
     app->id   = 0;
@@ -507,7 +507,7 @@ dict_app_t *dict_app_new() {
 
 void dict_app_free(dict_app_t *app) {
     if (app) {
-        md_free(app);
+        zd_free(app);
     }
 }
 
@@ -517,7 +517,7 @@ void dict_app_init(dict_app_t *app) {
     app->uri  = NULL;
 }
 
-const dict_cmd_t *dict_get_cmd(const dict_t *dict, cmd_code_t code, app_id_t app) {
+const dict_czd_t *dict_get_cmd(const dict_t *dict, czd_code_t code, app_id_t app) {
     return NULL;
 }
 

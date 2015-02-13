@@ -6,8 +6,6 @@ typedef struct dlist {
     struct dlist *  prev;
 } list_t;
 
-typedef list_t queue_t;
-
 list_t *list_new();
 void list_init(list_t *l);
 void list_free(list_t *l);

@@ -4,19 +4,22 @@
 #include "conn.h"
 #include "worker.h"
 
-typedef struct {
-    list_t          list;
+typedef struct __server {
+    uint16_t        port;       /* port this service binds */
+    array_t *       endpoints;  /* interfaces/ips this service binds */
+    int             protocol;   /* IP, IPv6, SCTP */
 
-    uint16_t        port;
-    list_t          endpoints;
-    int             protocol;
+    conn_t *        conn;       /* listening context */
 
-    conn_t *        conn;       /* listening */
+    pthread_t       thread;     /* main thread of this thread */
+    int             status;     /* thread is running or stopped */
 
-    pthread_t       thread;
-    int             status;
+    dict_t *        dict;       /* diameter dictionary */
 
-    list_t          receivers;  /* thread each client, number is in conf */
+    array_t *       receivers;  /* thread each client, number is in conf */
+    array_t *       workers;    /* shared by all clients of this service */
+
+    int             curr_worker;/* how incoming messagea are routed to workers */
 } server_t;
 
 
@@ -29,5 +32,7 @@ void      server_init(server_t *server);
 
 int server_start(server_t *server);
 int server_stop(server_t *server);
+
+int server_dispatch(server_t *server, msg_t *msg);
 
 #endif

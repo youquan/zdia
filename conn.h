@@ -2,7 +2,7 @@
 #define _CONN_H_
 
 #include <netinet/in.h>
-#include "list.h"
+#include "array.h"
 
 typedef struct {
     int         sock;
@@ -16,18 +16,17 @@ typedef struct {
 } conn_t;
 
 typedef struct {
-    list_t                  list;
     struct sockaddr_storage addr;
 } endpoint_t;
 
 conn_t *conn_new();
 void    conn_free(conn_t *conn);
 
-conn_t *conn_serv_bind(int protocol, uint16_t port, list_t *ep); 
+conn_t *conn_serv_bind(int protocol, uint16_t port, array_t *ep); 
 int     conn_serv_listen(conn_t *conn);
 conn_t *conn_serv_accept(conn_t *conn);
 
-conn_t *conn_cli_connect(int protocol, uint16_t port, list_t *ep);
+conn_t *conn_cli_connect(int protocol, uint16_t port, array_t *ep);
 
 int     conn_recv(conn_t *conn, unsigned char *buf, size_t len);
 int     conn_send(conn_t *conn, const unsigned char *buf, size_t len);

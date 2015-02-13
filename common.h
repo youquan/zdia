@@ -7,16 +7,16 @@
 #include "log.h"
 
 /* memory */
-typedef void *(*md_alloc_func)(size_t);
-typedef void *(*md_realloc_func)(void *ptr, size_t);
-typedef void  (*md_free_func)(void *);
+typedef void *(*zd_alloc_func)(size_t);
+typedef void *(*zd_realloc_func)(void *ptr, size_t);
+typedef void  (*zd_free_func)(void *);
 
-void  md_set_alloc(md_alloc_func f);
-void  md_set_free(md_free_func f);
+void  zd_set_alloc(zd_alloc_func f);
+void  zd_set_free(zd_free_func f);
 
-void *md_malloc(size_t n);
-void *md_realloc(void *ptr, size_t n);
-void  md_free(void *ptr);
+void *zd_malloc(size_t n);
+void *zd_realloc(void *ptr, size_t n);
+void  zd_free(void *ptr);
 
 /* check return value */
 #define CHECK_INT_DO(__call, __condition, __fallback) \

@@ -3,16 +3,17 @@
 
 #include "msg.h"
 #include "ind.h"
-#include "fifo.h"
+#include "queue.h"
 
+struct __server;
 typedef struct {
-    list_t      list;
-
     int         id;
     pthread_t   thread;
     int         status;
 
-    fifo_t      fifo;
+    queue_t *   queue;
+
+    struct __server *   server;
 } worker_t;
 
 typedef int (*msg_handler_func)(const msg_t *msg);

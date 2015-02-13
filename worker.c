@@ -18,7 +18,8 @@ static msg_handler_func msg_handler = msg_handler_default;
 static ind_handler_func ind_handler = ind_handler_default;
 
 static int worker_msg_proc(msg_t *msg) {
-    msg_parse_all(msg, dict);
+    //dict_t *dict = NULL;
+    //msg_parse_all(msg, dict);
 
     switch (msg->header.cmd_code) {
         case 257:
@@ -40,12 +41,12 @@ static int worker_ind_proc(ind_t *ind) {
 
 static void *worker_thread(void *args) {
     worker_t *worker = (worker_t *)args;
-    fifo_t    fifo = worker->fifo;
+    queue_t  *queue  = worker->queue;
 
     while (worker->status) {
         // 1.get from queue
         event_t ev;
-        if (0 != fifo_pop(fifo, &ev)) {
+        if (0 != queue_pop(queue, &ev)) {
             usleep(1000000);
             continue;
         }
@@ -70,12 +71,11 @@ static void *worker_thread(void *args) {
 }
 
 worker_t *worker_new() {
-    worker_t *worker = (worker_t *)md_malloc(sizeof(worker_t));
-    if (worker == NULL) return NULL;
+    worker_t *worker = (worker_t *)zd_malloc(sizeof(worker_t));
 
-    worker->fifo = fifo_new(sizeof(event_t), 1024);
-    if (worker->fifo == NULL) {
-        md_free(worker);
+    worker->queue = queue_new(sizeof(event_t), 1024);
+    if (worker->queue == NULL) {
+        zd_free(worker);
         return NULL;
     }
 
@@ -83,7 +83,7 @@ worker_t *worker_new() {
     worker->status = 0;
 
     if (worker_start(worker) != 0 ) {
-        md_free(worker);
+        zd_free(worker);
     }
 
     return worker;
@@ -91,11 +91,11 @@ worker_t *worker_new() {
 
 void worker_free(worker_t *worker) {
     if (worker) {
-        fifo_free(worker->fifo);
+        queue_free(worker->queue);
 
         worker_stop(worker);
 
-        md_free(worker);
+        zd_free(worker);
     }
 }
 
@@ -126,14 +126,14 @@ int worker_stop(worker_t *worker) {
 
 int worker_push_msg(worker_t *worker, msg_t *msg) {
     event_t ev = {EVENT_MSG, .data.msg = msg};
-    fifo_push(worker->fifo, &ev);
+    queue_push(worker->queue, &ev);
 
     return 0;
 }
 
 int worker_push_ind(worker_t *worker, ind_t *ind) {
     event_t ev = {EVENT_IND, .data.ind = ind};
-    fifo_push(worker->fifo, &ev);
+    queue_push(worker->queue, &ev);
 
     return 0;
 }

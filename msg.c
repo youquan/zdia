@@ -5,17 +5,13 @@
 #include "msg.h"
 
 msg_t *msg_new(size_t n) {
-    msg_t *msg = (msg_t *)md_malloc(sizeof(msg_t));
-    if (msg == NULL) return NULL;
+    msg_t *msg = (msg_t *)zd_malloc(sizeof(msg_t));
 
     memset(&msg->header, 0, sizeof(msg->header));
     msg->raw_data = NULL;
 
     if (n > 0) {
-        if ((msg->raw_data = md_malloc(n)) == NULL) {
-            md_free(msg);
-            return NULL;
-        }
+        msg->raw_data = zd_malloc(n);
 
         msg->header.version = DIAMETER_VERSION;
         msg->header.msg_len = n;
@@ -29,7 +25,7 @@ msg_t *msg_new(size_t n) {
 msg_t *msg_new_from(uint32_t *buf) {
     if (buf == NULL) return NULL;
 
-    msg_t *msg = (msg_t *)md_malloc(sizeof(msg_t));
+    msg_t *msg = (msg_t *)zd_malloc(sizeof(msg_t));
     if (msg == NULL) return NULL;
 
     memset(&msg->header, 0, sizeof(msg->header));
@@ -53,8 +49,8 @@ msg_t *msg_new_from(uint32_t *buf) {
 void msg_free(msg_t *msg) {
     if (!msg) return;
 
-    if (msg->raw_data) md_free((void *)msg->raw_data);
-    md_free(msg);
+    if (msg->raw_data) zd_free((void *)msg->raw_data);
+    zd_free(msg);
 }
 
 int msg_parse_header(msg_t *msg) {

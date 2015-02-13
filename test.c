@@ -14,17 +14,21 @@ int main() {
     sa->sin_family = AF_INET;
     sa->sin_port = htons(12345);
     sa->sin_addr.s_addr = INADDR_ANY;
-    list_append(&s->endpoints, (list_t *)&ep);
+    array_push_back(s->endpoints, &ep);
 
     s->protocol = IPPROTO_TCP;
     s->conn = NULL;
 
+#if 0
     dict_t *dict = dict_new();
     dict_add_dict(dict, "dictionary.xml");
+    s->dict = dict;
+#endif
 
-    server_start(s, dict);
+    server_start(s);
 
-    array_iter_t it, it2;
+#if 0
+    void *it, *it2;
 
     fprintf(stdout, "application\n");
     for (it = array_begin(dict->apps); it != array_end(dict->apps); it = array_next(dict->apps, it)) {
@@ -40,7 +44,7 @@ int main() {
 
     fprintf(stdout, "\ncommand\n");
     for (it = array_begin(dict->cmds); it != array_end(dict->cmds); it = array_next(dict->cmds, it)) {
-        dict_cmd_t *cmd = (dict_cmd_t *)it;
+        dict_czd_t *cmd = (dict_czd_t *)it;
         fprintf(stdout, "    command proxible: %d, name: %s, code: %u\n", cmd->proxiable, cmd->name, cmd->code);
 
         fprintf(stdout, "        request avps \n");
@@ -81,6 +85,7 @@ int main() {
         dict_avp_type_t *type = (dict_avp_type_t *)it;
         fprintf(stdout, "    type name: %s, parent: %s, codec: %d\n", type->name, type->parent_name, type->base);
     }
+#endif
 
     sleep(100);
 

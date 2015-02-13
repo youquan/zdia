@@ -4,10 +4,11 @@
 #include <stdint.h>
 #include "array.h"
 
-typedef uint32_t        cmd_code_t;
+typedef uint32_t        czd_code_t;
 typedef uint32_t        avp_code_t;
 typedef uint32_t        vendor_id_t;
 typedef uint32_t        app_id_t;
+typedef uint32_t        cmd_code_t;
 
 /* cmd: index = vendor-id >> 32 + code
  * avp: index = app-id >> 32 + code
@@ -108,7 +109,7 @@ typedef struct dict_avp {
 } dict_avp_t;
 
 typedef struct {
-    cmd_code_t          code;
+    czd_code_t          code;
     const char *        name;
     int                 proxiable;
 
@@ -117,7 +118,7 @@ typedef struct {
     array_t             ans_rules;
 
     const dict_app_t *  app;
-} dict_cmd_t;
+} dict_czd_t;
 
 typedef struct {
     /* dict parameters */
@@ -128,7 +129,7 @@ typedef struct {
     /* dict_avp_t */
     array_t             vendors;
 
-    /* dict_cmd_t */
+    /* dict_czd_t */
     array_t             cmds;
 
     /* dict_avp_t */
@@ -147,7 +148,7 @@ void dict_free(dict_t *dict);
 int dict_add_dict(dict_t *dict, const char *file);
 
 dict_app_t * dict_add_app(dict_t *dict, const dict_app_t *app);
-dict_cmd_t * dict_add_cmd(dict_t *dict, const dict_cmd_t *cmd);
+dict_czd_t * dict_add_cmd(dict_t *dict, const dict_czd_t *cmd);
 dict_avp_t * dict_add_avp(dict_t *dict, const dict_avp_t *avp);
 dict_avp_type_t * dict_add_avp_type(dict_t *dict, const dict_avp_type_t *type);
 int dict_add_vendor(dict_t *dict, const dict_vendor_t *vendor);
@@ -157,14 +158,14 @@ dict_app_t *dict_app_new();
 void dict_app_free(dict_app_t *app);
 void dict_app_init(dict_app_t *app);
 int dict_app_add_avp(dict_app_t *app, const dict_avp_t *avp);
-int dict_app_add_cmd(dict_app_t *app, const dict_cmd_t *cmd);
+int dict_app_add_cmd(dict_app_t *app, const dict_czd_t *cmd);
 int dict_app_add_type(dict_app_t *app, const dict_avp_type_t *t);
 
 /* dict avp operations */
 int dict_avp_add_avp(dict_avp_t *avp, const dict_avp_t *sub, const dict_avp_rule_t *r);
-int dict_cmd_add_avp(dict_cmd_t *cmd, const dict_avp_t *sub, const dict_avp_rule_t *r);
+int dict_czd_add_avp(dict_czd_t *cmd, const dict_avp_t *sub, const dict_avp_rule_t *r);
 
-const dict_cmd_t *dict_get_cmd(const dict_t *dict, cmd_code_t code, app_id_t app);
+const dict_czd_t *dict_get_cmd(const dict_t *dict, czd_code_t code, app_id_t app);
 const dict_avp_t *dict_get_avp(const dict_t *dict, avp_code_t code, vendor_id_t vendor_id);
 
 const char *dict_dump(const dict_t *dict);

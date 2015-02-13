@@ -1,6 +1,6 @@
 
 # target file name
-TARGET 	:= mydia
+TARGET 	:= zdia
 
 
 DIR_BIN := bin
@@ -18,14 +18,13 @@ SRC 	:= test.c \
 	       conn.c \
 	       array.c \
 	       list.c \
-	       fifo.c \
+	       queue.c \
 	       receiver.c \
 	       worker.c \
 	       tcp.c \
 	       common.c \
 	       avp.c \
 	       msg.c \
-	       dict.c \
            # don't delete this line
 
 OBJ 	:= $(SRC:%.c=%.o)
