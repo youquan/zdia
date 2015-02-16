@@ -26,6 +26,7 @@ typedef struct {
 
 #define DIAMETER_VERSION 1
 #define MSG_HEADER_SIZE 20
+#define DIAMETER_ALIGN  4
 
 enum {
     MSG_PARSED_NONE,        /* not parsed */
@@ -36,7 +37,9 @@ enum {
 typedef struct {
     msg_header_t        header;
     int                 parsed;
-    list_t              avps;
+    array_t *           avps;
+
+    const dict_t *      dict;
 
     /* always 4 octets aligned */
     const uint32_t *    raw_data;
@@ -47,7 +50,7 @@ msg_t *msg_new_from(uint32_t *buf);
 void   msg_free(msg_t *msg);
 
 int    msg_parse_header(msg_t *msg);
-int    msg_parse_all(msg_t *msg, const dict_t *dict);
+int    msg_parse_all(msg_t *msg);
 
 //int    msg_add_avp(msg_t *msg, const avp_t *avp);
 //int    msg_add_avp_raw(msg_t *msg, avp_code_t code, const char *val);

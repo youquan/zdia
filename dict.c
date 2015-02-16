@@ -13,7 +13,7 @@ typedef struct {
     dict_t *        dict;
     array_t         path;
     dict_app_t *    curr_app;
-    dict_czd_t *    curr_cmd;
+    dict_cmd_t *    curr_cmd;
     dict_avp_t *    curr_avp;
     array_t *       curr_rules;
 } xml_parse_info_t;
@@ -38,7 +38,7 @@ static void xml_dia_type() {
 static void xml_elem_start(void *user_data, const XML_Char *name, const XML_Char **attrs) {
     int i;
     xml_parse_info_t *parse_info = (xml_parse_info_t *)user_data;
-    array_push_back(parse_info->path, strdup(name));
+    array_push_back(&parse_info->path, strdup(name));
 
     if (0 == strcmp(name, "base")) {
         dict_app_t app;
@@ -88,7 +88,7 @@ static void xml_elem_start(void *user_data, const XML_Char *name, const XML_Char
 
         dict_add_vendor(parse_info->dict, &vendor);
     } else if (0 == strcmp(name, "command")) {
-        dict_czd_t cmd;
+        dict_cmd_t cmd;
         cmd.proxiable = 1;
         cmd.req_rules = array_new(sizeof(dict_avp_rule_t));
         cmd.ans_rules = array_new(sizeof(dict_avp_rule_t));
@@ -107,13 +107,13 @@ static void xml_elem_start(void *user_data, const XML_Char *name, const XML_Char
 
         parse_info->curr_cmd = dict_add_cmd(parse_info->dict, &cmd);
     } else if (0 == strcmp(name, "requestrules")) {
-        parse_info->curr_rules = &parse_info->curr_cmd->req_rules;
+        parse_info->curr_rules = parse_info->curr_cmd->req_rules;
     } else if (0 == strcmp(name, "answerrules")) {
-        parse_info->curr_rules = &parse_info->curr_cmd->ans_rules;
+        parse_info->curr_rules = parse_info->curr_cmd->ans_rules;
     } else if (0 == strcmp(name, "grouped")) {
         parse_info->curr_avp->type_name = "grouped";
         parse_info->curr_avp->content.rules = array_new(sizeof(dict_avp_rule_t));
-        parse_info->curr_rules = &parse_info->curr_avp->content.rules;
+        parse_info->curr_rules = parse_info->curr_avp->content.rules;
     } else if (0 == strcmp(name, "avprule")) {
         dict_avp_rule_t rule;
         memset(&rule, 0, sizeof(rule));
@@ -141,6 +141,7 @@ static void xml_elem_start(void *user_data, const XML_Char *name, const XML_Char
             }
         }
 
+        if (rule.max < rule.min) rule.max = rule.min;
         array_push_back(parse_info->curr_rules, &rule);
     } else if (0 == strcmp(name, "avp")) {
         dict_avp_t avp;
@@ -201,7 +202,7 @@ static void xml_elem_start(void *user_data, const XML_Char *name, const XML_Char
     } else if (0 == strcmp(name, "enum")) {
         dict_enum_t e;
 
-        array_t *enums = &parse_info->curr_avp->content.enums;
+        array_t **enums = &parse_info->curr_avp->content.enums;
         if (*enums == NULL) *enums = array_new(sizeof(dict_enum_t));
 
         for (i = 0; attrs[i]; i += 2) {
@@ -218,7 +219,7 @@ static void xml_elem_start(void *user_data, const XML_Char *name, const XML_Char
     } else if (0 == strcmp(name, "typedefn")) {
         dict_avp_type_t type;
         memset(&type, 0, sizeof(type));
-        type.base = ABT_UNKNOWN;
+        type.codec = CODEC_UNKNOWN;
 
         for (i = 0; attrs[i]; i += 2) {
             if (0 == strcmp(attrs[i], "type-name")) {
@@ -238,7 +239,7 @@ static void xml_elem_start(void *user_data, const XML_Char *name, const XML_Char
 
 static void xml_elem_end(void *user_data, const XML_Char *name) {
     xml_parse_info_t *parse_info = (xml_parse_info_t *)user_data;
-    array_pop_back(parse_info->path);
+    array_pop_back(&parse_info->path);
 }
 
 static void xml_text(void *user_data, const XML_Char *text, int len) {
@@ -254,7 +255,7 @@ static int cmp_vendor(const void *a, const void *b) {
 }
 
 static int cmp_cmd(const void *a, const void *b) {
-    return ((const dict_czd_t *)a)->code - ((const dict_czd_t *)b)->code;
+    return ((const dict_cmd_t *)a)->code - ((const dict_cmd_t *)b)->code;
 }
 
 static int cmp_avp(const void *a, const void *b) {
@@ -268,9 +269,14 @@ static int cmp_type(const void *a, const void *b) {
 static void dict_build_base_types(dict_t *dict) {
     static dict_avp_type_t types[] = {
         /* name,        parent_name,   description,         parent,    base */
-        {"OctetString", NULL,          "Octet String",      NULL,      0},
-        {"Unsigned32",  NULL,          "Unsigned32",        NULL,      1},
-        {"Unsigned64",  NULL,          "Unsigned64",        NULL,      2}
+        {"Grouped",     NULL,          "Grouped",           NULL,      CODEC_GROUPED},
+        {"OctetString", NULL,          "Octet String",      NULL,      CODEC_OCTETSTRING},
+        {"Integer32",   NULL,          "Integer32",         NULL,      CODEC_INTEGER32},
+        {"Integer32",   NULL,          "Integer32",         NULL,      CODEC_INTEGER32},
+        {"Unsigned32",  NULL,          "Unsigned32",        NULL,      CODEC_UNSIGNED32},
+        {"Unsigned64",  NULL,          "Unsigned64",        NULL,      CODEC_UNSIGNED64},
+        {"Float32",     NULL,          "Float32",           NULL,      CODEC_FLOAT32},
+        {"Float64",     NULL,          "Float64",           NULL,      CODEC_FLOAT64}
     };
 
     int i;
@@ -279,18 +285,20 @@ static void dict_build_base_types(dict_t *dict) {
     }
 }
 
-static void dict_build_rules(array_t rules, array_t avps) {
-    array_iter_t it;
+static void dict_build_rules(array_t *rules, array_t *avps) {
+    int i;
 
-    for (it = array_begin(rules); it != array_end(rules); it = array_next(rules, it)) {
-        array_iter_t it_avp;
-        dict_avp_rule_t *rule = (dict_avp_rule_t *)it;
+    dict_avp_rule_t *rule = (dict_avp_rule_t *)rules->data;
+    for (i = 0; i < rules->size; i++) {
+        int j;
 
-        if (rule->avp != NULL) continue;
+        /* already bind */
+        if (rule[i].avp != NULL) continue;
 
-        for (it_avp = array_begin(avps); it_avp != array_end(avps); it_avp = array_next(avps, it_avp)) {
-            if (0 == strcmp(rule->avp_name, ((dict_avp_t *)it_avp)->name)) {
-                rule->avp = it_avp;
+        dict_avp_t *avp = (dict_avp_t *)avps->data;
+        for (j = 0; j < avps->size; j++) {
+            if (0 == strcmp(rule[i].avp_name, avp[j].name)) {
+                rule[i].avp = &avp[j];
                 break;
             }
         }
@@ -298,85 +306,81 @@ static void dict_build_rules(array_t rules, array_t avps) {
 }
 
 static void dict_build(dict_t *dict) {
-    array_iter_t it;
+    int i, j;
 
     array_sort(dict->apps);
 
     array_sort(dict->vendors);
 
     array_sort(dict->cmds);
-    for (it = array_begin(dict->cmds); it != array_end(dict->cmds); it = array_next(dict->cmds, it)) {
-        dict_czd_t *cmd = (dict_czd_t *)it;
-
-        dict_build_rules(cmd->req_rules, dict->avps);
-        dict_build_rules(cmd->ans_rules, dict->avps);
-    }
-
-    array_sort(dict->avps);
-    for (it = array_begin(dict->avps); it != array_end(dict->avps); it = array_next(dict->avps, it)) {
-        dict_avp_t *avp = it;
-
-        if (0 == strcmp(avp->type_name, "grouped")) {
-            dict_build_rules(avp->content.rules, dict->avps);
-        }
+    dict_cmd_t *cmd = (dict_cmd_t *)dict->cmds->data;
+    for (i = 0; i < dict->cmds->size; i++) {
+        dict_build_rules(cmd[i].req_rules, dict->avps);
+        dict_build_rules(cmd[i].ans_rules, dict->avps);
     }
 
     /* create type chain at first */
     array_sort(dict->types);
-    for (it = array_begin(dict->types); it != array_end(dict->types); it = array_next(dict->types, it)) {
-        dict_avp_type_t *type = (dict_avp_type_t *)it;
-        if (type->parent_name != NULL) {
-            array_iter_t it2;
-            for (it2 = array_begin(dict->types); it2 != array_end(dict->types); it2 = array_next(dict->types, it2)) {
-                if (0 == strcmp(((dict_avp_type_t *)it2)->name, type->parent_name)) {
-                    type->parent = (dict_avp_type_t *)it2;
-                    break;
-                }
+    dict_avp_type_t *type = (dict_avp_type_t *)dict->types->data;
+    for (i = 0; i < dict->types->size; i++) {
+        if (type[i].parent_name == NULL) continue;
+
+        for (j = 0; j < dict->types->size; j++) {
+            if (0 == strcmp(type[j].name, type[i].parent_name)) {
+                type[i].parent = &type[j];
+                break;
             }
         }
     }
 
-    /* set base for types */
-    for (it = array_begin(dict->types); it != array_end(dict->types); it = array_next(dict->types, it)) {
-        dict_avp_type_t *type = (dict_avp_type_t *)it;
-        dict_avp_type_t *curr = type;
+    array_sort(dict->avps);
+    dict_avp_t *avp = (dict_avp_t *)dict->avps->data;
+    for (i = 0; i < dict->avps->size; i++) {
+        if (0 == strcmp(avp[i].type_name, "grouped")) {
+            avp[i].type = &type[CODEC_GROUPED];
+            dict_build_rules(avp[i].content.rules, dict->avps);
+        }
 
-        while (curr && curr->base == ABT_UNKNOWN) {
+        type = (dict_avp_type_t *)dict->types->data;
+        for (j = 0; j < dict->types->size; j++) {
+            if (0 == strcmp(type[j].name, avp[i].type_name)) {
+                avp[i].type = &type[j];
+                break;
+            }
+        }
+    }
+
+    /* set codec for types */
+    type = (dict_avp_type_t *)dict->types->data;
+    for (i = 0; i < dict->types->size; i++) {
+        dict_avp_type_t *curr = &type[i];
+
+        while (curr && curr->codec == CODEC_UNKNOWN) {
             curr = curr->parent;
         };
 
         if (curr) {
-            type->base = curr->base;
+            type[i].codec = curr->codec;
         } else {
-            LOG_ERROR("no base type for type %s.", type->name);
+            LOG_ERROR("no codec for type %s.", type->name);
         }
     }
 }
 
 dict_t *dict_new() {
     dict_t *dict = (dict_t *)zd_malloc(sizeof(dict_t));
-    if (dict == NULL) return NULL;
 
     dict->apps    = array_new(sizeof(dict_app_t));
     dict->vendors = array_new(sizeof(dict_vendor_t));
-    dict->cmds    = array_new(sizeof(dict_czd_t));
+    dict->cmds    = array_new(sizeof(dict_cmd_t));
     dict->avps    = array_new(sizeof(dict_avp_t));
     dict->types   = array_new(sizeof(dict_avp_type_t));
 
-    if (dict->apps    == NULL ||
-        dict->vendors == NULL ||
-        dict->cmds    == NULL ||
-        dict->avps    == NULL ||
-        dict->types   == NULL) {
-        dict_free(dict);
-        return NULL;
-    }
-
-    array_set_cmp(dict->apps,    cmp_app);
-    array_set_cmp(dict->vendors, cmp_vendor);
-    array_set_cmp(dict->cmds,    cmp_cmd);
-    array_set_cmp(dict->avps,    cmp_avp);
-    array_set_cmp(dict->types,   cmp_type);
+    dict->apps->cmp    = cmp_app;
+    dict->vendors->cmp = cmp_vendor;
+    dict->cmds->cmp    = cmp_cmd;
+    dict->avps->cmp    = cmp_avp;
+    dict->types->cmp   = cmp_type;
 
     dict_build_base_types(dict);
 
@@ -398,10 +402,7 @@ void dict_free(dict_t *dict) {
 int dict_add_dict(dict_t *dict, const char *file) {
     xml_parse_info_t parse_info;
     parse_info.dict = dict;
-    parse_info.path = array_new(sizeof(char *));
-    if (parse_info.path == NULL) {
-        return ENOMEM;
-    }
+    array_init(&parse_info.path, sizeof(char *));
 
     XML_Parser p = XML_ParserCreate(NULL);
     if (!p) {
@@ -446,6 +447,7 @@ int dict_add_dict(dict_t *dict, const char *file) {
 
     fclose(fp);
     XML_ParserFree(p);
+    array_free_data(&parse_info.path);
 
     dict_build(dict);
 
@@ -460,7 +462,7 @@ dict_app_t * dict_add_app(dict_t *dict, const dict_app_t *app) {
     }
 }
 
-dict_czd_t * dict_add_cmd(dict_t *dict, const dict_czd_t *cmd) {
+dict_cmd_t * dict_add_cmd(dict_t *dict, const dict_cmd_t *cmd) {
     if (array_push_back(dict->cmds, cmd) == 0) {
         return array_back(dict->cmds);
     } else {
@@ -517,16 +519,17 @@ void dict_app_init(dict_app_t *app) {
     app->uri  = NULL;
 }
 
-const dict_czd_t *dict_get_cmd(const dict_t *dict, czd_code_t code, app_id_t app) {
+const dict_cmd_t *dict_get_cmd(const dict_t *dict, cmd_code_t code, app_id_t app) {
     return NULL;
 }
 
 const dict_avp_t *dict_get_avp(const dict_t *dict, avp_code_t code, vendor_id_t vendor_id) {
-    array_iter_t it;
-    for (it = array_begin(dict->avps); it != array_end(dict->avps); it = array_next(dict->avps, it)) {
-        dict_avp_t *da = (dict_avp_t *)it;
-        if (da->code == code && da->vendor_id == vendor_id) {
-            return da;
+    int i;
+
+    dict_avp_t *da = (dict_avp_t *)dict->avps->data;
+    for (i = 0; i < dict->avps->size; i++) {
+        if (da[i].code == code && da[i].vendor_id == vendor_id) {
+            return &da[i];
         }
     }
 

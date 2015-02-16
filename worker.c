@@ -5,6 +5,7 @@
 #include "worker.h"
 #include "list.h"
 #include "event.h"
+#include "avp.h"
 
 int msg_handler_default(const msg_t *msg) {
     return 0;
@@ -18,8 +19,7 @@ static msg_handler_func msg_handler = msg_handler_default;
 static ind_handler_func ind_handler = ind_handler_default;
 
 static int worker_msg_proc(msg_t *msg) {
-    //dict_t *dict = NULL;
-    //msg_parse_all(msg, dict);
+    msg_parse_all(msg);
 
     switch (msg->header.cmd_code) {
         case 257:
@@ -29,6 +29,12 @@ static int worker_msg_proc(msg_t *msg) {
         default:
         msg_handler(msg);
         break;
+    }
+
+    int i;
+    const avp_t **avp = (const avp_t **)msg->avps->data;
+    for (i = 0; i < msg->avps->size; i++) {
+        LOG_INFO("avp[code: %d; name: %s]: %d", avp[i]->dict_avp->code, avp[i]->dict_avp->name, avp[i]->value.i32);
     }
 
     return 0;

@@ -4,7 +4,6 @@
 
 avp_t *avp_new() {
     avp_t *avp = (avp_t *)zd_malloc(sizeof(avp_t));
-    if (avp == NULL) return NULL;
 
     memset(avp, 0, sizeof(avp_t));
 
@@ -12,79 +11,95 @@ avp_t *avp_new() {
 }
 
 avp_t *avp_new_from(const uint32_t *buf) {
-    avp_t *avp = (avp_t *)zd_malloc(sizeof(avp_t));
-    if (avp == NULL) return NULL;
+    size_t pos = 0;
+    uint32_t value;
 
+    avp_t *avp = (avp_t *)zd_malloc(sizeof(avp_t));
     memset(avp, 0, sizeof(avp_t));
     avp->raw_data = buf;
+
+    /* decode header */
+    if (buf != NULL) {
+        /* avp code */
+        avp->code = ntohl(buf[pos]);
+        pos++;
+
+        /* flags and length */
+        value = ntohl(buf[pos]);
+        avp->flags = (uint8_t)(value >> 24);
+        avp->len   = value & 0xffffff;
+        pos++;
+
+        /* vendor id if any */
+        if (AVP_IS_FLAG_SET(avp, AVP_FLAG_VENDOR)) {
+            avp->vendor_id = ntohl(buf[pos]);
+        }
+    }
 
     return avp;
 }
 
-int avp_decode(avp_t *avp, const dict_t *dict) {
-    size_t pos = 0;
-    uint32_t value;
+void avp_free(avp_t *avp) {
+    if (avp) {
+        /* free sub avps if any */
+        if (avp->avps) {
+            int i;
+            avp_t **a = (avp_t **)avp->avps->data;
+            for (i = 0; i < avp->avps->size; i++) {
+                avp_free(a[i]);
+            }
+            array_free(avp->avps);
+        }
+
+        /* never free raw_data */
+        zd_free(avp);
+    }
+}
+
+int avp_decode(avp_t *avp) {
     const uint32_t *raw = avp->raw_data;
+    size_t pos = AVP_HEADER_SIZE_NO_VENDOR;
 
-    /* avp code */
-    avp->code = ntohl(raw[pos]);
-    pos++;
-
-    /* flags and length */
-    value = ntohl(raw[pos]);
-    avp->flags = (uint8_t)(value >> 24);
-    avp->len   = value & 0xffffff;
-    pos++;
-
-    /* vendor id if any */
     if (AVP_IS_FLAG_SET(avp, AVP_FLAG_VENDOR)) {
-        avp->vendor_id = ntohl(raw[pos]);
-        pos++;
+        pos = AVP_HEADER_SIZE_WITH_VENDOR;
     }
 
     /* value */
-    //const dict_avp_t *da = dict_get_avp(dict, avp->code, avp->vendor_id);
-    const dict_avp_t *da = NULL;
-    if (da == NULL) {
-        LOG_WARN("cannot decode avp [code: %u; vendor-id: %u], please add information in dictinory.", avp->code, avp->vendor_id);
-        pos = (avp->len + 3) / 4;
-    } else {
-        switch (da->type->base) {
-            case ABT_GROUPED:
+    switch (avp->dict_avp->type->codec) {
+        case CODEC_GROUPED:
             break;
 
-            case ABT_OCTETSTRING:
+        case CODEC_OCTETSTRING:
             break;
 
-            case ABT_INTEGER32:
+        case CODEC_INTEGER32:
             avp->value.i32 = ntohl(raw[pos]);
             pos++;
             break;
 
-            case ABT_INTEGER64:
+        case CODEC_INTEGER64:
             pos += 2;
             break;
 
-            case ABT_UNSIGNED32:
+        case CODEC_UNSIGNED32:
             avp->value.u32 = ntohl(raw[pos]);
             pos++;
             break;
 
-            case ABT_UNSIGNED64:
+        case CODEC_UNSIGNED64:
             pos += 2;
             break;
 
-            case ABT_FLOAT32:
+        case CODEC_FLOAT32:
             pos++;
             break;
 
-            case ABT_FLOAT64:
+        case CODEC_FLOAT64:
             pos += 2;
             break;
 
-            default:
+        default:
             break;
-        }
     }
 
     return pos;

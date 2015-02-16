@@ -25,6 +25,7 @@ SRC 	:= test.c \
 	       common.c \
 	       avp.c \
 	       msg.c \
+	       dict.c \
            # don't delete this line
 
 OBJ 	:= $(SRC:%.c=%.o)

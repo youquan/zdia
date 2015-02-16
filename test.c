@@ -7,87 +7,85 @@
 
 int main() {
     server_t *s = server_new();
-    s->port = 12345;
+    s->port = 3868;
 
     endpoint_t ep;
     struct sockaddr_in *sa = (struct sockaddr_in *)&ep.addr;
     sa->sin_family = AF_INET;
-    sa->sin_port = htons(12345);
+    sa->sin_port = htons(3868);
     sa->sin_addr.s_addr = INADDR_ANY;
     array_push_back(s->endpoints, &ep);
 
     s->protocol = IPPROTO_TCP;
     s->conn = NULL;
 
-#if 0
     dict_t *dict = dict_new();
     dict_add_dict(dict, "dictionary.xml");
     s->dict = dict;
-#endif
 
     server_start(s);
 
-#if 0
-    void *it, *it2;
+    int i, j;
+    j = 0;
 
     fprintf(stdout, "application\n");
-    for (it = array_begin(dict->apps); it != array_end(dict->apps); it = array_next(dict->apps, it)) {
-        dict_app_t *app = (dict_app_t *)it;
-        fprintf(stdout, "    app id: %d, name: %s, uri: %s\n", app->id, app->name, app->uri);
+    dict_app_t *app = (dict_app_t *)dict->apps->data;
+    for (i = 0; i < dict->apps->size; i++) {
+        fprintf(stdout, "    app id: %d, name: %s, uri: %s\n", app[i].id, app[i].name, app[i].uri);
     }
 
     fprintf(stdout, "\nvendor\n");
-    for (it = array_begin(dict->vendors); it != array_end(dict->vendors); it = array_next(dict->vendors, it)) {
-        dict_vendor_t *vendor = (dict_vendor_t *)it;
-        fprintf(stdout, "    vendor id: %d, name: %s\n", vendor->id, vendor->name);
+    dict_vendor_t *vendor = (dict_vendor_t *)dict->vendors->data;
+    for (i = 0; i < dict->vendors->size; i++) {
+        fprintf(stdout, "    vendor id: %d, name: %s\n", vendor[i].id, vendor[i].name);
     }
 
     fprintf(stdout, "\ncommand\n");
-    for (it = array_begin(dict->cmds); it != array_end(dict->cmds); it = array_next(dict->cmds, it)) {
-        dict_czd_t *cmd = (dict_czd_t *)it;
-        fprintf(stdout, "    command proxible: %d, name: %s, code: %u\n", cmd->proxiable, cmd->name, cmd->code);
+    dict_cmd_t *cmd = (dict_cmd_t *)dict->cmds->data;
+    for (i = 0; i < dict->cmds->size; i++) {
+        fprintf(stdout, "    command proxible: %d, name: %s, code: %u\n", cmd[i].proxiable, cmd[i].name, cmd[i].code);
 
         fprintf(stdout, "        request avps \n");
-        for (it2 = array_begin(cmd->req_rules); it2 != array_end(cmd->req_rules); it2 = array_next(cmd->req_rules, it2)) {
-            dict_avp_rule_t *rule = (dict_avp_rule_t *)it2;
-            fprintf(stdout, "            name: %s, min: %d, max: %d, code: %d, vendor-id: %d\n", rule->avp_name, rule->min, rule->max, rule->avp->code, rule->avp->vendor_id);
+        dict_avp_rule_t *rule = (dict_avp_rule_t *)cmd[i].req_rules->data;
+        for (j = 0; j < cmd[i].req_rules->size; j++) {
+            fprintf(stdout, "            name: %s, min: %d, max: %d, code: %d, vendor-id: %d\n", rule[j].avp_name, rule[j].min, rule[j].max, rule[j].avp->code, rule[j].avp->vendor_id);
         }
 
         fprintf(stdout, "        answer avps\n");
-        for (it2 = array_begin(cmd->ans_rules); it2 != array_end(cmd->ans_rules); it2 = array_next(cmd->ans_rules, it2)) {
-            dict_avp_rule_t *rule = (dict_avp_rule_t *)it2;
-            fprintf(stdout, "            name: %s, min: %d, max: %d, code: %d, vendor-id: %d\n", rule->avp_name, rule->min, rule->max, rule->avp->code, rule->avp->vendor_id);
+        rule = (dict_avp_rule_t *)cmd[i].ans_rules->data;
+        for (j = 0; j < cmd[i].ans_rules->size; j++) {
+            fprintf(stdout, "            name: %s, min: %d, max: %d, code: %d, vendor-id: %d\n", rule[j].avp_name, rule[j].min, rule[j].max, rule[j].avp->code, rule[j].avp->vendor_id);
         }
     }
 
     fprintf(stdout, "\navp\n");
-    for (it = array_begin(dict->avps); it != array_end(dict->avps); it = array_next(dict->avps, it)) {
-        dict_avp_t *avp = (dict_avp_t *)it;
-        fprintf(stdout, "    avp name: %s, code: %u, type: %s\n", avp->name, avp->code, avp->type_name);
+    dict_avp_t *avp = (dict_avp_t *)dict->avps->data;
+    for (i = 0; i < dict->avps->size; i++) {
+        fprintf(stdout, "    avp name: %s, code: %u, type: %s\n", avp[i].name, avp[i].code, avp[i].type_name);
 
-        if (0 == strcmp("grouped", avp->type_name)) {
+        if (0 == strcmp("grouped", avp[i].type_name)) {
             fprintf(stdout, "        sub avps\n");
-            for (it2 = array_begin(avp->content.rules); it2 != array_end(avp->content.rules); it2 = array_next(avp->content.rules, it2)) {
-                dict_avp_rule_t *rule = (dict_avp_rule_t *)it2;
-                fprintf(stdout, "            name: %s, min: %d, max: %d\n", rule->avp_name, rule->min, rule->max);
+            dict_avp_rule_t *rule = (dict_avp_rule_t *)avp[i].content.rules->data;
+            for (j = 0; j < avp[i].content.rules->size; j++) {
+                fprintf(stdout, "            name: %s, min: %d, max: %d\n", rule[j].avp_name, rule[j].min, rule[j].max);
             }
-        } else if (avp->content.enums) {
+        } else if (avp[i].content.enums) {
             fprintf(stdout, "        enums\n");
-            for (it2 = array_begin(avp->content.enums); it2 != array_end(avp->content.enums); it2 = array_next(avp->content.enums, it2)) {
-                dict_enum_t *e = (dict_enum_t *)it2;
-                fprintf(stdout, "            name: %s, code: %d\n", e->name, e->code);
+            dict_enum_t *e = (dict_enum_t *)avp[i].content.enums->data;
+            for (j = 0; j < avp[i].content.enums->size; j++) {
+                fprintf(stdout, "            name: %s, code: %d\n", e[j].name, e[j].code);
             }
         }
     }
 
     fprintf(stdout, "\ntype\n");
-    for (it = array_begin(dict->types); it != array_end(dict->types); it = array_next(dict->types, it)) {
-        dict_avp_type_t *type = (dict_avp_type_t *)it;
-        fprintf(stdout, "    type name: %s, parent: %s, codec: %d\n", type->name, type->parent_name, type->base);
+    dict_avp_type_t *type = (dict_avp_type_t *)dict->types->data;
+    for (i = 0; i < dict->types->size; i++) {
+        fprintf(stdout, "    type name: %s, parent: %s, codec: %d\n", type[i].name, type[i].parent_name, type[i].codec);
     }
-#endif
 
-    sleep(100);
+    free(dict);
+    pthread_join(s->thread, NULL);
 
     return 0;
 }

@@ -42,14 +42,13 @@ static void *receiver_thread(void *args) {
 
     while (1) {
         unsigned char header[4];
-        size_t ret = 0;
-        size_t received = 0;
+        int ret = 0;
+        int received = 0;
         msg_t *msg;
 
         do {
             ret = conn_recv(conn, &header[received], sizeof(header) - received);
             if (ret < 0) {
-                LOG_ERROR("connection broken");
                 // connection down indication
                 break;      // stop the receiver thread
             }
@@ -60,6 +59,10 @@ static void *receiver_thread(void *args) {
 
             received += ret;
         } while (received < sizeof(header));
+        if (ret <= 0) {
+            LOG_ERROR("connection broken: %d", ret);
+            break;
+        }
 
         unsigned version = header[0];
         unsigned msg_len = (header[1] << 16) + (header[2] << 8) + header[3];
@@ -82,9 +85,11 @@ static void *receiver_thread(void *args) {
         };
         memcpy((void *)msg->raw_data, header, sizeof(header));
 
+        msg->dict = receiver->server->dict;
         msg_parse_header(msg);
         //msg_parse_all(msg);
 
+        LOG_ERROR("pushing: %u", (unsigned)pthread_self());
         if (server_dispatch(receiver->server, msg) != 0) {
             LOG_ERROR("fail to push message [code: %u, size: %u] to worker", msg->header.cmd_code, msg_len);
             msg_free(msg);
@@ -92,7 +97,7 @@ static void *receiver_thread(void *args) {
     }
 
     LOG_DEBUG("exiting receiver thread, cleaning...");
-    receiver_free(receiver);
+    //receiver_free(receiver);
 
     return NULL;
 }

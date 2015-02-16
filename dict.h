@@ -4,27 +4,26 @@
 #include <stdint.h>
 #include "array.h"
 
-typedef uint32_t        czd_code_t;
+typedef uint32_t        cmd_code_t;
 typedef uint32_t        avp_code_t;
 typedef uint32_t        vendor_id_t;
 typedef uint32_t        app_id_t;
-typedef uint32_t        cmd_code_t;
 
 /* cmd: index = vendor-id >> 32 + code
  * avp: index = app-id >> 32 + code
  * */
 typedef uint64_t        dict_index_t;
 
-enum dict_avp_base_type {
-    ABT_GROUPED,
-    ABT_OCTETSTRING,
-    ABT_INTEGER32,
-    ABT_INTEGER64,
-    ABT_UNSIGNED32,
-    ABT_UNSIGNED64,
-    ABT_FLOAT32,
-    ABT_FLOAT64,
-    ABT_UNKNOWN
+enum dict_avp_codec {
+    CODEC_GROUPED,
+    CODEC_OCTETSTRING,
+    CODEC_INTEGER32,
+    CODEC_INTEGER64,
+    CODEC_UNSIGNED32,
+    CODEC_UNSIGNED64,
+    CODEC_FLOAT32,
+    CODEC_FLOAT64,
+    CODEC_UNKNOWN
 };
 
 enum dict_avp_position {
@@ -62,7 +61,7 @@ typedef struct dict_avp_type {
     const char *            desc;
 
     struct dict_avp_type *  parent;
-    enum dict_avp_base_type base;
+    enum dict_avp_codec     codec;
 } dict_avp_type_t;
 
 typedef struct {
@@ -101,42 +100,42 @@ typedef struct dict_avp {
 
     /* enum values or sub-avps with rule */
     union {
-        array_t                 enums;
-        array_t                 rules;
+        array_t *               enums;
+        array_t *               rules;
     } content;
 
     const dict_app_t *          app;
 } dict_avp_t;
 
 typedef struct {
-    czd_code_t          code;
+    cmd_code_t          code;
     const char *        name;
     int                 proxiable;
 
     /* dict_avp_rule_t */
-    array_t             req_rules;
-    array_t             ans_rules;
+    array_t *           req_rules;
+    array_t *           ans_rules;
 
     const dict_app_t *  app;
-} dict_czd_t;
+} dict_cmd_t;
 
 typedef struct {
     /* dict parameters */
 
     /* dict_app_t */
-    array_t             apps;
+    array_t *           apps;
 
     /* dict_avp_t */
-    array_t             vendors;
+    array_t *           vendors;
 
-    /* dict_czd_t */
-    array_t             cmds;
+    /* dict_cmd_t */
+    array_t *           cmds;
 
     /* dict_avp_t */
-    array_t             avps;
+    array_t *           avps;
 
     /* dict_avp_type_t */
-    array_t             types;
+    array_t *           types;
 
 } dict_t;
 
@@ -148,7 +147,7 @@ void dict_free(dict_t *dict);
 int dict_add_dict(dict_t *dict, const char *file);
 
 dict_app_t * dict_add_app(dict_t *dict, const dict_app_t *app);
-dict_czd_t * dict_add_cmd(dict_t *dict, const dict_czd_t *cmd);
+dict_cmd_t * dict_add_cmd(dict_t *dict, const dict_cmd_t *cmd);
 dict_avp_t * dict_add_avp(dict_t *dict, const dict_avp_t *avp);
 dict_avp_type_t * dict_add_avp_type(dict_t *dict, const dict_avp_type_t *type);
 int dict_add_vendor(dict_t *dict, const dict_vendor_t *vendor);
@@ -158,14 +157,14 @@ dict_app_t *dict_app_new();
 void dict_app_free(dict_app_t *app);
 void dict_app_init(dict_app_t *app);
 int dict_app_add_avp(dict_app_t *app, const dict_avp_t *avp);
-int dict_app_add_cmd(dict_app_t *app, const dict_czd_t *cmd);
+int dict_app_add_cmd(dict_app_t *app, const dict_cmd_t *cmd);
 int dict_app_add_type(dict_app_t *app, const dict_avp_type_t *t);
 
 /* dict avp operations */
 int dict_avp_add_avp(dict_avp_t *avp, const dict_avp_t *sub, const dict_avp_rule_t *r);
-int dict_czd_add_avp(dict_czd_t *cmd, const dict_avp_t *sub, const dict_avp_rule_t *r);
+int dict_cmd_add_avp(dict_cmd_t *cmd, const dict_avp_t *sub, const dict_avp_rule_t *r);
 
-const dict_czd_t *dict_get_cmd(const dict_t *dict, czd_code_t code, app_id_t app);
+const dict_cmd_t *dict_get_cmd(const dict_t *dict, cmd_code_t code, app_id_t app);
 const dict_avp_t *dict_get_avp(const dict_t *dict, avp_code_t code, vendor_id_t vendor_id);
 
 const char *dict_dump(const dict_t *dict);

@@ -21,7 +21,7 @@ void        array_free(array_t *arr);
 void        array_free_data(array_t *arr);
 void        array_init(array_t *arr, size_t elem_size);
 #define     ARRAY_INITIALIZER \
-            {.elem_size = sizeof(int), capacity = ARRAY_INITIAL_SIZE, size = 0, .data = NULL}
+            {.elem_size = sizeof(int), .capacity = 0, .size = 0, .data = NULL}
 
 void    array_set_cmp(array_t *arr, int (*cmp)(const void *, const void *));
 void    array_sort(array_t *arr);
